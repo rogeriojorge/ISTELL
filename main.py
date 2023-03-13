@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import os
+import glob
+import shutil
 import numpy as np
+from pathlib import Path
 from simsopt.util import MpiPartition
-from simsopt.mhd import Vmec
-from simsopt.mhd import QuasisymmetryRatioResidual
+from simsopt.mhd import Vmec,  QuasisymmetryRatioResidual
 from simsopt.objectives import LeastSquaresProblem
 from simsopt.solve import least_squares_mpi_solve
 from simsopt.geo import CurveSurfaceDistance, curves_to_vtk, create_equally_spaced_curves
@@ -30,17 +32,29 @@ aspect_weight = 1e-3
 max_modes = [1, 2, 3]
 rel_step = 1e-3
 abs_step = 1e-5
+ISTTOK_R0 = 0.46
+ISTTOK_R1 = 0.085
+ntheta_VMEC = 50
+nphi_VMEC = 160
+numquadpoints = 100
 ######## END INPUT PARAMETERS ########
+### Go to results folder
+results_path = os.path.join(os.path.dirname(__file__), 'results')
+Path(results_path).mkdir(parents=True, exist_ok=True)
+os.chdir(results_path)
+### Get VMEC surface
 filename = os.path.join(os.path.dirname(__file__), 'input.nfp2_initial')
-vmec = Vmec(filename, mpi=mpi, verbose=False, ntheta=50, nphi=160)
+vmec = Vmec(filename, mpi=mpi, verbose=False, ntheta=ntheta_VMEC, nphi=nphi_VMEC)
 s = vmec.boundary
-base_curves = create_equally_spaced_curves(ncoils, s.nfp, stellsym=True, R0=0.46, R1=0.085, order=1, numquadpoints=100)
+### Create coils
+base_curves = create_equally_spaced_curves(ncoils, s.nfp, stellsym=True, R0=ISTTOK_R0, R1=ISTTOK_R1, order=1, numquadpoints=numquadpoints)
 base_currents = [Current(1e5) for i in range(ncoils)]
 base_currents[0].fix_all()
 coils = coils_via_symmetries(base_curves, base_currents, s.nfp, True)
 curves = [c.curve for c in coils]
 curves_to_vtk(curves, 'curves_init')
 s.to_vtk("surf_init")
+### Optimize
 for max_mode in max_modes:
     surf = vmec.boundary
     surf.fix_all()
@@ -73,6 +87,7 @@ for max_mode in max_modes:
     vmec.indata.niter_array[:3] = [ 2000,  3000, 20000]
     vmec.indata.ftol_array[:3]  = [1e-14, 1e-14, 1e-14]
     vmec.write_input(f'input.ISTTOK_maxmode{max_mode}')
+### Write result
 vmec.indata.ns_array[:3]    = [  16,    51,    101]
 vmec.indata.niter_array[:3] = [ 2000,  3000, 20000]
 vmec.indata.ftol_array[:3]  = [1e-14, 1e-14, 1e-14]
@@ -81,3 +96,15 @@ vmec = Vmec('input.ISTTOK_final')
 vmec.run()
 s = vmec.boundary
 s.to_vtk("surf_final")
+if mpi.proc0_world:
+    shutil.move(f"wout_ISTTOK_final_000_000000.nc", f"wout_ISTTOK_final.nc")
+    os.remove(f'input.ISTTOK_final_000_000000')
+# Remove spurious files
+if mpi.proc0_world:
+    for objective_file in glob.glob(f"jac_*"): os.remove(objective_file)
+    for objective_file in glob.glob(f"jac_*"): os.remove(objective_file)
+    for objective_file in glob.glob(f"objective_*"): os.remove(objective_file)
+    for objective_file in glob.glob(f"residuals_*"): os.remove(objective_file)
+    for objective_file in glob.glob(f"*000_*"): os.remove(objective_file)
+    for objective_file in glob.glob(f"parvmec*"): os.remove(objective_file)
+    for objective_file in glob.glob(f"threed*"): os.remove(objective_file)
