@@ -22,21 +22,21 @@ except ImportError:
     pprint = print
 ######## INPUT PARAMETERS ########
 ncoils=7
-CS_THRESHOLD = 0.003
-CS_WEIGHT = 1e30
-max_nfev = 20
+CS_THRESHOLD = 0.004
+CS_WEIGHT = 1e32
+max_nfev = 30
 iota_target = 0.187
 iota_weight = 5e1
 aspect_target = 7.0
-aspect_weight = 5e-4
-max_modes = [1, 1, 2, 2, 3, 3, 4, 4]
+aspect_weight = 1e-3
+max_modes = [1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4]
 rel_step = 1e-5
 abs_step = 1e-7
 ISTTOK_R0 = 0.46
-ISTTOK_R1 = 0.085
-ntheta_VMEC = 51
-nphi_VMEC = 51
-numquadpoints = 91
+ISTTOK_R1 = 0.1
+ntheta_VMEC = 81
+nphi_VMEC = 81
+numquadpoints = 141
 ftol=1e-4
 diff_method = 'centered'
 ######## END INPUT PARAMETERS ########
@@ -50,13 +50,14 @@ vmec = Vmec(filename, mpi=mpi, verbose=False, ntheta=ntheta_VMEC, nphi=nphi_VMEC
 s = vmec.boundary
 ### Create coils
 base_curves = create_equally_spaced_curves(ncoils, s.nfp, stellsym=True, R0=ISTTOK_R0, R1=ISTTOK_R1, order=1, numquadpoints=numquadpoints)
-base_currents = [Current(1e5) for i in range(ncoils)]
-base_currents[0].fix_all()
-# coils = coils_via_symmetries(base_curves, base_currents, s.nfp, True)
-# curves = [c.curve for c in coils]
-# curves_to_vtk(curves, 'curves_init')
+#base_currents = [Current(1e5) for i in range(ncoils)]
+#base_currents[0].fix_all()
+#coils = coils_via_symmetries(base_curves, base_currents, s.nfp, True)
+#curves = [c.curve for c in coils]
+#curves_to_vtk(curves, 'curves_init')
 curves_to_vtk(base_curves, 'curves_init')
 s.to_vtk("surf_init")
+#exit()
 ### Optimize
 surf = vmec.boundary
 Jcsdist = CurveSurfaceDistance(base_curves, surf, CS_THRESHOLD)
