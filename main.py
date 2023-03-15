@@ -22,14 +22,14 @@ except ImportError:
     pprint = print
 ######## INPUT PARAMETERS ########
 ncoils=7
-CS_THRESHOLD = 0.002
+CS_THRESHOLD = 0.0028
 CS_WEIGHT = 1e33
 max_nfev = 30
-iota_target = 0.137
+iota_target = 0.17
 iota_weight = 5e1
 aspect_target = 8.0
-aspect_weight = 1e-2
-quasisymmetry_weight = 5e4
+aspect_weight = 3e-2
+quasisymmetry_weight = 7e4
 max_modes = [1, 1, 2, 2, 3, 3, 4, 4]
 rel_step = 1e-5
 abs_step = 1e-7
@@ -65,6 +65,7 @@ Jcsdist = CurveSurfaceDistance(base_curves, surf, CS_THRESHOLD)
 qs = QuasisymmetryRatioResidual(vmec, np.arange(0, 1.01, 0.1),  # Radii to target
                                 helicity_m=1, helicity_n=0)  # (M, N) you want in |B|
 for max_mode in max_modes:
+    pprint(f'Max mode = {max_mode}')
     surf.fix_all()
     surf.fixed_range(mmin=0, mmax=max_mode, nmin=-max_mode, nmax=max_mode, fixed=False)
     surf.fix("rc(0,0)")  # Major radius
