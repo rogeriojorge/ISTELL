@@ -22,7 +22,7 @@ except ImportError:
     pprint = print
 ######## INPUT PARAMETERS ########
 ncoils=7
-CS_THRESHOLD = 0.00279
+CS_THRESHOLD = 0.00219
 CS_WEIGHT = 1e33
 max_nfev = 30
 iota_target = 0.177
@@ -103,6 +103,8 @@ vmec.run()
 if mpi.proc0_world:
     s = vmec.boundary
     s.to_vtk("surf_final")
+    ncoils=10
+    base_curves = create_equally_spaced_curves(ncoils, s.nfp, stellsym=True, R0=ISTTOK_R0, R1=ISTTOK_R1, order=3, numquadpoints=numquadpoints)
     base_currents = [Current(1e5) for i in range(ncoils)]
     base_currents[0].fix_all()
     coils = coils_via_symmetries(base_curves, base_currents, s.nfp, True)
