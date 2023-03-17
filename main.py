@@ -22,22 +22,22 @@ except ImportError:
     pprint = print
 ######## INPUT PARAMETERS ########
 ncoils=7
-CS_THRESHOLD = 0.00219
+CS_THRESHOLD = 0.0009
 CS_WEIGHT = 1e33
 max_nfev = 30
 iota_target = 0.177
 iota_weight = 5e1
 aspect_target = 8.0
 aspect_weight = 3e-2
-quasisymmetry_weight = 1e5
+quasisymmetry_weight = 4e5
 max_modes = [1, 1, 2, 2, 3, 3, 4, 4]
 rel_step = 1e-5
 abs_step = 1e-7
 ISTTOK_R0 = 0.46
 ISTTOK_R1 = 0.1
-ntheta_VMEC = 81
-nphi_VMEC = 81
-numquadpoints = 141
+ntheta_VMEC = 91
+nphi_VMEC = 91
+numquadpoints = 151
 ftol=1e-4
 diff_method = 'centered'
 ######## END INPUT PARAMETERS ########
@@ -68,7 +68,7 @@ for max_mode in max_modes:
     pprint(f' ### Max mode = {max_mode} ### ')
     surf.fix_all()
     surf.fixed_range(mmin=0, mmax=max_mode, nmin=-max_mode, nmax=max_mode, fixed=False)
-    surf.fix("rc(0,0)")  # Major radius
+    # surf.fix("rc(0,0)")  # Major radius
     prob = LeastSquaresProblem.from_tuples([(vmec.aspect, aspect_target, aspect_weight),
                                             (qs.residuals, 0, quasisymmetry_weight),
                                             (vmec.mean_iota, iota_target, iota_weight),

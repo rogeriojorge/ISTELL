@@ -7,11 +7,11 @@ import matplotlib.pyplot as plt
 from simsopt.mhd import Vmec, Boozer
 from qsc import Qsc
 #### INPUT PARAMETERS ####
-max_s_for_fit = 0.3
+max_s_for_fit = 0.6
 boozxform_nsurfaces = 20
 boozer_mpol = 64
 boozer_ntor = 64
-N_phi = 121
+N_phi = 151
 max_n_to_plot = 3
 show_fit_plot = True
 plot_boozer = True
