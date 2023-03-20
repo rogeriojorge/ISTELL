@@ -48,7 +48,8 @@ if plot_boozer:
     fig = plt.figure(); bx.modeplot(b1.bx, sqrts=True); plt.xlabel(r'$s=\psi/\psi_b$')
     plt.savefig(os.path.join(current_path, 'results', "Boozxform_modeplot_ISTTOK_final.pdf"), bbox_inches = 'tight', pad_inches = 0); plt.close()
 print('Obtaining near-axis components')
-nNormal = 0
+stel = Qsc(rc=vmec.wout.raxis_cc,zs=-vmec.wout.zaxis_cs,etabar=1,nphi=N_phi,nfp=vmec.wout.nfp)
+nNormal = stel.iotaN - stel.iota
 # Prepare coordinates for fit
 s_full = np.linspace(0,1,b1.bx.ns_in)
 ds = s_full[1] - s_full[0]
