@@ -22,7 +22,7 @@ except ImportError:
     pprint = print
 ######## INPUT PARAMETERS ########
 ncoils=7
-CS_THRESHOLD = 0.00009
+CS_THRESHOLD = 0.00047
 CS_WEIGHT = 1e33
 max_nfev = 30
 iota_target = 0.177
