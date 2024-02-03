@@ -25,7 +25,7 @@ except ImportError:
 QA_or_QH = 'QA'
 ncoils=5
 CS_THRESHOLD = 1e-2#0.00047
-CS_WEIGHT = 1e1
+CS_WEIGHT = 1e6
 max_nfev = 30
 iota_target = 0.41#0.177
 iota_weight = 5e1 if QA_or_QH == 'QA' else 0
@@ -37,9 +37,9 @@ rel_step = 1e-5
 abs_step = 1e-7
 ISTTOK_R0 = 1#0.46
 ISTTOK_R1 = 0.5#0.1
-ntheta_VMEC = 51
-nphi_VMEC = 51
-numquadpoints = 161
+ntheta_VMEC = 31
+nphi_VMEC = 31
+numquadpoints = 91
 ftol=1e-4
 diff_method = 'forward'
 ######## END INPUT PARAMETERS ########
@@ -62,13 +62,14 @@ curves_to_vtk(base_curves, 'curves_init')
 surf.to_vtk("surf_init")
 #exit()
 ### Optimize
+helicity_n = 0 if QA_or_QH == 'QA' else -1
 Jcsdist = CurveSurfaceDistance(base_curves, surf, 0.1)
 qs = QuasisymmetryRatioResidual(vmec, np.arange(0, 1.01, 0.1),  # Radii to target
-                                helicity_m=1, helicity_n=0 if QA_or_QH == 'QA' else -1)  # (M, N) you want in |B|
+                                helicity_m=1, helicity_n=helicity_n)  # (M, N) you want in |B|
 
-def max_dist(vmec):
-    return Jcsdist.J()
-optMaxDist = make_optimizable(max_dist, vmec)
+# def max_dist(vmec):
+#     return Jcsdist.J()
+# optMaxDist = make_optimizable(max_dist, vmec)
 
 for max_mode in max_modes:
     pprint(f' ### Max mode = {max_mode} ### ')
@@ -81,8 +82,8 @@ for max_mode in max_modes:
                                             (vmec.aspect, aspect_target, aspect_weight),
                                             (qs.residuals, 0, quasisymmetry_weight),
                                             (vmec.mean_iota, iota_target, iota_weight),
-                                            # (Jcsdist.J, 0, CS_WEIGHT)
-                                            (optMaxDist.J, 0, CS_WEIGHT)
+                                            (Jcsdist.J, 0, CS_WEIGHT)
+                                            # (optMaxDist.J, 0, CS_WEIGHT)
                                             ])
     pprint("Iota before optimization:", vmec.mean_iota())
     pprint("Distance to surfaces before optimization:", Jcsdist.shortest_distance())

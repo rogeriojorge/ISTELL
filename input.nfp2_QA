@@ -12,7 +12,7 @@
   NTOR = 0003
   NS_ARRAY    =     16
   NITER_ARRAY =   2000
-  FTOL_ARRAY  =  1e-11
+  FTOL_ARRAY  =  1e-12
   PHIEDGE =    0.083
 !----- Free Boundary Parameters -----
   LFREEB = F
@@ -32,5 +32,8 @@
 !----- Boundary Parameters -----
 ! n comes before m!
   RBC(0,0) =   1.0E+00     ZBS(0,0) =   0.0000E+00
-  RBC(0,1) =   2.0E-01     ZBS(0,1) =   2.0E-01
+  RBC(0,1) =   2.0E-01     ZBS(0,1) =   1.0E-01
+  RBC(1,1) =   1.0E-02     ZBS(1,1) =   1.0E-02
+  RBC(1,0) =   1.0E-02     ZBS(1,0) =   1.0E-02
+  RBC(-1,1) =  1.0E-02     ZBS(-1,1) =  1.0E-02
 /
