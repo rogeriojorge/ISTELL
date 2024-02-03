@@ -10,6 +10,7 @@ from simsopt.objectives import LeastSquaresProblem
 from simsopt.solve import least_squares_mpi_solve
 from simsopt.geo import CurveSurfaceDistance, curves_to_vtk, create_equally_spaced_curves
 from simsopt.field import Current, coils_via_symmetries
+from simsopt import make_optimizable
 mpi = MpiPartition()
 try:
     from mpi4py import MPI
@@ -21,58 +22,68 @@ except ImportError:
     comm = None
     pprint = print
 ######## INPUT PARAMETERS ########
-ncoils=7
-CS_THRESHOLD = 0.00047
-CS_WEIGHT = 1e33
+QA_or_QH = 'QA'
+ncoils=5
+CS_THRESHOLD = 1e-2#0.00047
+CS_WEIGHT = 1e1
 max_nfev = 30
-iota_target = 0.177
-iota_weight = 5e1
-aspect_target = 8.0
-aspect_weight = 3e-2
-quasisymmetry_weight = 4e5
-max_modes = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6]
+iota_target = 0.41#0.177
+iota_weight = 5e1 if QA_or_QH == 'QA' else 0
+aspect_target = 5.0
+aspect_weight = 1e0#3e-2
+quasisymmetry_weight = 1e1
+max_modes = [1, 2]#[1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6]
 rel_step = 1e-5
 abs_step = 1e-7
-ISTTOK_R0 = 0.46
-ISTTOK_R1 = 0.1
-ntheta_VMEC = 91
-nphi_VMEC = 91
-numquadpoints = 151
+ISTTOK_R0 = 1#0.46
+ISTTOK_R1 = 0.5#0.1
+ntheta_VMEC = 51
+nphi_VMEC = 51
+numquadpoints = 161
 ftol=1e-4
-diff_method = 'centered'
+diff_method = 'forward'
 ######## END INPUT PARAMETERS ########
 ### Go to results folder
-results_path = os.path.join(os.path.dirname(__file__), 'results')
+results_path = os.path.join(os.path.dirname(__file__), 'results_'+QA_or_QH)
 Path(results_path).mkdir(parents=True, exist_ok=True)
 os.chdir(results_path)
 ### Get VMEC surface
-filename = os.path.join(os.path.dirname(__file__), 'input.nfp2_initial')
+filename = os.path.join(os.path.dirname(__file__), 'input.nfp2_QA' if QA_or_QH == 'QA' else 'input.nfp4_QH_warm_start')
 vmec = Vmec(filename, mpi=mpi, verbose=False, ntheta=ntheta_VMEC, nphi=nphi_VMEC, range_surface='half period')
-s = vmec.boundary
+surf = vmec.boundary
 ### Create coils
-base_curves = create_equally_spaced_curves(ncoils, s.nfp, stellsym=True, R0=ISTTOK_R0, R1=ISTTOK_R1, order=2, numquadpoints=numquadpoints)
+base_curves = create_equally_spaced_curves(ncoils, surf.nfp, stellsym=True, R0=ISTTOK_R0, R1=ISTTOK_R1, order=2, numquadpoints=numquadpoints)
 #base_currents = [Current(1e5) for i in range(ncoils)]
 #base_currents[0].fix_all()
 #coils = coils_via_symmetries(base_curves, base_currents, s.nfp, True)
 #curves = [c.curve for c in coils]
 #curves_to_vtk(curves, 'curves_init')
 curves_to_vtk(base_curves, 'curves_init')
-s.to_vtk("surf_init")
+surf.to_vtk("surf_init")
 #exit()
 ### Optimize
-surf = vmec.boundary
-Jcsdist = CurveSurfaceDistance(base_curves, surf, CS_THRESHOLD)
+Jcsdist = CurveSurfaceDistance(base_curves, surf, 0.1)
 qs = QuasisymmetryRatioResidual(vmec, np.arange(0, 1.01, 0.1),  # Radii to target
-                                helicity_m=1, helicity_n=0)  # (M, N) you want in |B|
+                                helicity_m=1, helicity_n=0 if QA_or_QH == 'QA' else -1)  # (M, N) you want in |B|
+
+def max_dist(vmec):
+    return Jcsdist.J()
+optMaxDist = make_optimizable(max_dist, vmec)
+
 for max_mode in max_modes:
     pprint(f' ### Max mode = {max_mode} ### ')
+    vmec.indata.mpol = max_mode + 2
+    vmec.indata.ntor = max_mode + 2
     surf.fix_all()
     surf.fixed_range(mmin=0, mmax=max_mode, nmin=-max_mode, nmax=max_mode, fixed=False)
     surf.fix("rc(0,0)")  # Major radius
-    prob = LeastSquaresProblem.from_tuples([(vmec.aspect, aspect_target, aspect_weight),
+    prob = LeastSquaresProblem.from_tuples([
+                                            (vmec.aspect, aspect_target, aspect_weight),
                                             (qs.residuals, 0, quasisymmetry_weight),
                                             (vmec.mean_iota, iota_target, iota_weight),
-                                            (Jcsdist.J, 0, CS_WEIGHT)])
+                                            # (Jcsdist.J, 0, CS_WEIGHT)
+                                            (optMaxDist.J, 0, CS_WEIGHT)
+                                            ])
     pprint("Iota before optimization:", vmec.mean_iota())
     pprint("Distance to surfaces before optimization:", Jcsdist.shortest_distance())
     pprint("Value of Jcsdist.J before optimization:", Jcsdist.J())
@@ -88,30 +99,33 @@ for max_mode in max_modes:
     pprint("Quasisymmetry objective after optimization:", qs.total())
     pprint("Aspect ratio after optimization:", vmec.aspect())
     pprint("Total objective after optimization:", prob.objective())
-    s.to_vtk(f"surf_maxmode{max_mode}")
+    surf.to_vtk(f"surf_maxmode{max_mode}")
     # vmec.indata.ns_array[:3]    = [  16,    51,    101]
     # vmec.indata.niter_array[:3] = [ 2000,  3000, 20000]
     # vmec.indata.ftol_array[:3]  = [1e-14, 1e-14, 1e-14]
-    vmec.write_input(f'input.ISTTOK_maxmode{max_mode}')
+    vmec.write_input(f'input.ISTTOK_maxmode{max_mode}_{QA_or_QH}')
 ### Write result
-vmec.indata.ns_array[:5]    = [  16,     51,   101,   151,   201]
-vmec.indata.niter_array[:5] = [ 2000,  2000,  2000,  2000, 20000]
-vmec.indata.ftol_array[:5]  = [1e-14, 1e-14, 1e-14, 1e-14, 1e-15]
-vmec.write_input(f'input.ISTTOK_final')
-vmec = Vmec('input.ISTTOK_final', mpi=mpi, verbose=True, ntheta=ntheta_VMEC, nphi=nphi_VMEC*2*s.nfp)
+# vmec.indata.ns_array[:5]    = [  16,     51,   101,   151,   201]
+# vmec.indata.niter_array[:5] = [ 2000,  2000,  2000,  2000, 20000]
+# vmec.indata.ftol_array[:5]  = [1e-14, 1e-14, 1e-14, 1e-14, 1e-15]
+vmec.indata.ns_array[:2]    = [   16,    51]
+vmec.indata.niter_array[:2] = [ 1000,  5000]
+vmec.indata.ftol_array[:2]  = [1e-12, 1e-13]
+vmec.write_input(f'input.ISTTOK_final_{QA_or_QH}')
+vmec = Vmec(f'input.ISTTOK_final_{QA_or_QH}', mpi=mpi, verbose=True, ntheta=ntheta_VMEC, nphi=nphi_VMEC*2*surf.nfp)
 vmec.run()
 if mpi.proc0_world:
     s = vmec.boundary
-    s.to_vtk("surf_final")
+    s.to_vtk(f"surf_final_{QA_or_QH}")
     ncoils=10
     base_curves = create_equally_spaced_curves(ncoils, s.nfp, stellsym=True, R0=ISTTOK_R0, R1=ISTTOK_R1, order=3, numquadpoints=numquadpoints)
     base_currents = [Current(1e5) for i in range(ncoils)]
     base_currents[0].fix_all()
     coils = coils_via_symmetries(base_curves, base_currents, s.nfp, True)
     curves = [c.curve for c in coils]
-    curves_to_vtk(curves, 'curves_final')
-    shutil.move(f"wout_ISTTOK_final_000_000000.nc", f"wout_ISTTOK_final.nc")
-    os.remove(f'input.ISTTOK_final_000_000000')
+    curves_to_vtk(curves, f'curves_final_{QA_or_QH}')
+    shutil.move(f"wout_ISTTOK_final_{QA_or_QH}_000_000000.nc", f"wout_ISTTOK_final_{QA_or_QH}.nc")
+    os.remove(f'input.ISTTOK_final_{QA_or_QH}_000_000000')
 # Remove spurious files
 if mpi.proc0_world:
     for objective_file in glob.glob(f"jac_*"): os.remove(objective_file)

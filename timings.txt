@@ -1,0 +1,63 @@
+ ====================== PARALLEL TIMINGS ====================
+               total  :        0.100525
+                rank  :               0
+mgrid file read time  :        0.000000
+        No. of procs  :               1
+
+      --- non-vacuum  :             168             16              1       0.092412
+
+             runvmec  :        0.100133
+
+         init radial  :        0.000000
+             eqsolve  :        0.093522
+             fileout  :        0.005346
+
+              evolve  :        0.091871
+             funct3d  :        0.092412
+            nfunct3d  :             168
+
+             totzsps  :        0.017191
+             totzspa  :        0.000000
+              symrzl  :        0.000000
+            jacobian  :        0.002780
+              bcovar  :        0.014680
+              vacuum  :        0.000000
+
+            - precal  :        0.000000
+           - surface  :        0.000000
+
+           - bextern  :        0.000000
+
+           -- becoil  :        0.000000
+           -- tolicu  :        0.000000
+           -- belicu  :        0.000000
+
+           - scalpot  :        0.000000
+
+           -- analyt  :        0.000000
+           -- greenf  :        0.000000
+            -- fourp  :        0.000000
+            -- fouri  :        0.000000
+
+            - solver  :        0.000000
+
+               alias  :        0.007400
+              forces  :        0.017439
+           symforces  :        0.000000
+             tomnsps  :        0.016662
+             tomnspa  :        0.000000
+             residue  :        0.014298
+          -- tridslv  :        0.012705
+
+ ============================================================
+
+           allgather  :        0.000000
+           allreduce  :        0.000187
+           broadcast  :        0.000007
+           sendrecv   :        0.000143
+
+     Fill_blocks      :        0.000000
+     Compute blocks   :        0.000000
+     Forward solve    :        0.000000
+     Backward solve   :        0.000000
+ ============================================================
