@@ -24,22 +24,22 @@ except ImportError:
 ######## INPUT PARAMETERS ########
 QA_or_QH = 'QA'
 ncoils=5
-CS_THRESHOLD = 1e-2#0.00047
-CS_WEIGHT = 1e6
+CS_THRESHOLD = 4e-2#0.00047
+CS_WEIGHT = 1e9
 max_nfev = 30
 iota_target = 0.41#0.177
 iota_weight = 5e1 if QA_or_QH == 'QA' else 0
-aspect_target = 5.0
+aspect_target = 6.0
 aspect_weight = 1e0#3e-2
 quasisymmetry_weight = 1e1
 max_modes = [1, 2]#[1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6]
 rel_step = 1e-5
 abs_step = 1e-7
 ISTTOK_R0 = 1#0.46
-ISTTOK_R1 = 0.5#0.1
-ntheta_VMEC = 31
-nphi_VMEC = 31
-numquadpoints = 91
+ISTTOK_R1 = 0.4#0.1
+ntheta_VMEC = 91
+nphi_VMEC = 91
+numquadpoints = 151
 ftol=1e-4
 diff_method = 'forward'
 ######## END INPUT PARAMETERS ########
@@ -73,8 +73,12 @@ qs = QuasisymmetryRatioResidual(vmec, np.arange(0, 1.01, 0.1),  # Radii to targe
 
 for max_mode in max_modes:
     pprint(f' ### Max mode = {max_mode} ### ')
-    vmec.indata.mpol = max_mode + 2
-    vmec.indata.ntor = max_mode + 2
+    if max_mode in [1,2]:
+        vmec.indata.mpol = 3
+        vmec.indata.ntor = 3
+    else:
+        vmec.indata.mpol = max_mode + 2
+        vmec.indata.ntor = max_mode + 2
     surf.fix_all()
     surf.fixed_range(mmin=0, mmax=max_mode, nmin=-max_mode, nmax=max_mode, fixed=False)
     surf.fix("rc(0,0)")  # Major radius
