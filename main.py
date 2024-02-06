@@ -22,7 +22,7 @@ except ImportError:
     comm = None
     pprint = print
 ######## INPUT PARAMETERS ########
-QA_or_QH = 'QA'
+QA_or_QH = 'QH'
 ncoils=5
 CS_THRESHOLD = 4e-2#0.00047
 CS_WEIGHT = 1e9
