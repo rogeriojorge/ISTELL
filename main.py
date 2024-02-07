@@ -11,6 +11,7 @@ from simsopt.solve import least_squares_mpi_solve
 from simsopt.geo import CurveSurfaceDistance, curves_to_vtk, create_equally_spaced_curves
 from simsopt.field import Current, coils_via_symmetries
 from simsopt import make_optimizable
+from vmecPlot2 import main as vmecPlot2_main
 mpi = MpiPartition()
 try:
     from mpi4py import MPI
@@ -23,47 +24,50 @@ except ImportError:
     pprint = print
 ######## INPUT PARAMETERS ########
 QA_or_QH = 'QH'
-ncoils=5
-CS_THRESHOLD = 4e-2#0.00047
-CS_WEIGHT = 1e9
-max_nfev = 30
+use_nfp3 = True
+ncoils=3
+CS_THRESHOLD = 1e-1#0.00047
+CS_WEIGHT = 1e13
+max_nfev = 40
 iota_target = 0.41#0.177
 iota_weight = 5e1 if QA_or_QH == 'QA' else 0
 aspect_target = 6.0
-aspect_weight = 1e0#3e-2
-quasisymmetry_weight = 1e1
+aspect_weight = 2e-2#3e-2
+quasisymmetry_weight = 1e2
 max_modes = [1, 2]#[1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6]
 rel_step = 1e-5
 abs_step = 1e-7
 ISTTOK_R0 = 1#0.46
-ISTTOK_R1 = 0.4#0.1
-ntheta_VMEC = 91
-nphi_VMEC = 91
-numquadpoints = 151
+ISTTOK_R1 = 0.25#0.1
+ntheta_VMEC = 32
+nphi_VMEC = 32
+numquadpoints = 101
 ftol=1e-4
 diff_method = 'forward'
 ######## END INPUT PARAMETERS ########
 ### Go to results folder
-results_path = os.path.join(os.path.dirname(__file__), 'results_'+QA_or_QH)
+results_path = os.path.join(os.path.dirname(__file__), 'results_'+QA_or_QH+'_nfp3' if use_nfp3 else '')
 Path(results_path).mkdir(parents=True, exist_ok=True)
 os.chdir(results_path)
 ### Get VMEC surface
-filename = os.path.join(os.path.dirname(__file__), 'input.nfp2_QA' if QA_or_QH == 'QA' else 'input.nfp4_QH_warm_start')
+if use_nfp3:
+    filename = os.path.join(os.path.dirname(__file__), 'input.nfp3_QA' if QA_or_QH == 'QA' else 'input.nfp3_QH')
+else:
+    filename = os.path.join(os.path.dirname(__file__), 'input.nfp2_QA' if QA_or_QH == 'QA' else 'input.nfp4_QH')
 vmec = Vmec(filename, mpi=mpi, verbose=False, ntheta=ntheta_VMEC, nphi=nphi_VMEC, range_surface='half period')
 surf = vmec.boundary
 ### Create coils
 base_curves = create_equally_spaced_curves(ncoils, surf.nfp, stellsym=True, R0=ISTTOK_R0, R1=ISTTOK_R1, order=2, numquadpoints=numquadpoints)
-#base_currents = [Current(1e5) for i in range(ncoils)]
-#base_currents[0].fix_all()
-#coils = coils_via_symmetries(base_curves, base_currents, s.nfp, True)
-#curves = [c.curve for c in coils]
+coils = coils_via_symmetries(base_curves, [Current(1e5) for i in range(ncoils)], surf.nfp, True)
+curves = [c.curve for c in coils]
 #curves_to_vtk(curves, 'curves_init')
-curves_to_vtk(base_curves, 'curves_init')
+curves_to_vtk(base_curves, 'curves_init_nfp')
+curves_to_vtk(curves, 'curves_init')
 surf.to_vtk("surf_init")
 #exit()
 ### Optimize
 helicity_n = 0 if QA_or_QH == 'QA' else -1
-Jcsdist = CurveSurfaceDistance(base_curves, surf, 0.1)
+Jcsdist = CurveSurfaceDistance(base_curves, surf, 0.04)
 qs = QuasisymmetryRatioResidual(vmec, np.arange(0, 1.01, 0.1),  # Radii to target
                                 helicity_m=1, helicity_n=helicity_n)  # (M, N) you want in |B|
 
@@ -131,6 +135,7 @@ if mpi.proc0_world:
     curves_to_vtk(curves, f'curves_final_{QA_or_QH}')
     shutil.move(f"wout_ISTTOK_final_{QA_or_QH}_000_000000.nc", f"wout_ISTTOK_final_{QA_or_QH}.nc")
     os.remove(f'input.ISTTOK_final_{QA_or_QH}_000_000000')
+    vmecPlot2_main(file=f"wout_ISTTOK_final_{QA_or_QH}.nc")
 # Remove spurious files
 if mpi.proc0_world:
     for objective_file in glob.glob(f"jac_*"): os.remove(objective_file)
