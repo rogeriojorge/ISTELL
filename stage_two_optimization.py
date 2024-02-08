@@ -12,31 +12,32 @@ from simsopt.objectives import Weight, SquaredFlux, QuadraticPenalty
 QA_or_QH = 'QA'
 
 R0 = 1.0
-R1 = 0.55 if QA_or_QH == 'QA' else 0.48
-order = 10
-ncoils = 7 if QA_or_QH == 'QA' else 5
+R1 = 0.6 if QA_or_QH == 'QA' else 0.42
+order = 8 if QA_or_QH == 'QA' else 10
+ncoils = 4 if QA_or_QH == 'QA' else 5
 do_long_opt = False
 extend_distance = 0.03
+use_nfp3 = True
 
 LENGTH_WEIGHT = Weight(1e1) if QA_or_QH == 'QA' else Weight(1e1)
-LENGTH_THRESHOLD = 25 if QA_or_QH == 'QA' else 20
-CS_THRESHOLD = 3e-2
-CS_WEIGHT = 1e8
-CC_THRESHOLD = 0.04
+LENGTH_THRESHOLD = 14.5 if QA_or_QH == 'QA' else 17
+CS_THRESHOLD = 0.08
+CS_WEIGHT = 1e12
+CC_THRESHOLD = 0.08 if QA_or_QH == 'QA' else 0.06
 CC_WEIGHT = 1e4
-CURVATURE_THRESHOLD = 60.
+CURVATURE_THRESHOLD = 10 if QA_or_QH == 'QA' else 22
 CURVATURE_WEIGHT = Weight(1e-5)
-MSC_THRESHOLD = 60
+MSC_THRESHOLD = 10 if QA_or_QH == 'QA' else 22
 MSC_WEIGHT = Weight(1e-5)
-MAXITER = 300
+MAXITER = 500
 
-results_path = os.path.join(os.path.dirname(__file__), 'results_'+QA_or_QH)
+results_path = os.path.join(os.path.dirname(__file__), 'results_'+QA_or_QH+'_nfp3' if use_nfp3 else '')
 Path(results_path).mkdir(parents=True, exist_ok=True)
 os.chdir(results_path)
 filename = 'input.ISTTOK_final_' + QA_or_QH
 # Initialize the boundary magnetic surface:
-nphi = 36
-ntheta = 36
+nphi = 12
+ntheta = 12
 
 s = SurfaceRZFourier.from_vmec_input(filename, range="half period", nphi=nphi, ntheta=ntheta)
 s_full = SurfaceRZFourier.from_vmec_input(filename, range="full torus", nphi=nphi*2*s.nfp, ntheta=ntheta)
@@ -46,18 +47,18 @@ s_full = SurfaceRZFourier.from_vmec_input(filename, range="full torus", nphi=nph
 # content = content.replace(f'NFP = 4', f'NFP = {s.nfp}')
 # with open('../input.vessel', 'w') as file: file.write(content)
 # s_vessel = SurfaceRZFourier.from_vmec_input('../input.vessel', range="half period", nphi=nphi, ntheta=ntheta)
-# s_vessel_full = SurfaceRZFourier.from_vmec_input('../input.vessel', range="full torus", nphi=nphi*2, ntheta=ntheta)
+# s_vessel_full = SurfaceRZFourier.from_vmec_input('../input.vessel', range="full torus", nphi=nphi*3, ntheta=ntheta)
 # content = content.replace(f'NFP = {s.nfp}', f'NFP = 4')
 # with open('../input.vessel', 'w') as file: file.write(content)
 
 # Create a vessel from QH input:
-s_vessel1 = SurfaceRZFourier.from_vmec_input('../results_QH/input.ISTTOK_final_QH', range="half period", nphi=nphi, ntheta=ntheta)
+s_vessel1 = SurfaceRZFourier.from_vmec_input(f'../results_QH{"_nfp3" if use_nfp3 else ""}/input.ISTTOK_final_QH', range="half period", nphi=nphi, ntheta=ntheta)
 s_vessel1.extend_via_normal(extend_distance)
-s_vessel_full1 = SurfaceRZFourier.from_vmec_input('../results_QH/input.ISTTOK_final_QH', range="full torus", nphi=nphi*2*4, ntheta=ntheta)
+s_vessel_full1 = SurfaceRZFourier.from_vmec_input(f'../results_QH{"_nfp3" if use_nfp3 else ""}/input.ISTTOK_final_QH', range="full torus", nphi=nphi*2*3, ntheta=ntheta)
 s_vessel_full1.extend_via_normal(extend_distance)
-s_vessel2 = SurfaceRZFourier.from_vmec_input('../results_QA/input.ISTTOK_final_QA', range="half period", nphi=nphi, ntheta=ntheta)
+s_vessel2 = SurfaceRZFourier.from_vmec_input(f'../results_QA{"_nfp3" if use_nfp3 else ""}/input.ISTTOK_final_QA', range="half period", nphi=nphi, ntheta=ntheta)
 s_vessel2.extend_via_normal(extend_distance)
-s_vessel_full2 = SurfaceRZFourier.from_vmec_input('../results_QA/input.ISTTOK_final_QA', range="full torus", nphi=nphi*2*2, ntheta=ntheta)
+s_vessel_full2 = SurfaceRZFourier.from_vmec_input(f'../results_QA{"_nfp3" if use_nfp3 else ""}/input.ISTTOK_final_QA', range="full torus", nphi=nphi*2*3, ntheta=ntheta)
 s_vessel_full2.extend_via_normal(extend_distance)
 
 # Create the initial coils:
@@ -75,6 +76,8 @@ s_full.to_vtk("surf_init_"+QA_or_QH, extra_data=pointData)
 bs.set_points(s.gamma().reshape((-1, 3)))
 pointData = {"B_N": np.sum(bs.B().reshape((nphi, ntheta, 3)) * s.unitnormal(), axis=2)[:, :, None]}
 s.to_vtk("surf_init_nfp_"+QA_or_QH, extra_data=pointData)
+# s_vessel_full.to_vtk("surf_vessel_"+QA_or_QH)
+# s_vessel.to_vtk("surf_vessel_nfp_"+QA_or_QH)
 s_vessel_full1.to_vtk("surf_vessel1_"+QA_or_QH)
 s_vessel1.to_vtk("surf_vessel1_nfp_"+QA_or_QH)
 s_vessel_full2.to_vtk("surf_vessel2_"+QA_or_QH)
@@ -86,8 +89,9 @@ bs.set_points(s.gamma().reshape((-1, 3)))
 Jf = SquaredFlux(s, bs)
 Jls = [CurveLength(c) for c in base_curves]
 Jccdist = CurveCurveDistance(curves, CC_THRESHOLD, num_basecurves=ncoils)
-Jcsdist1 = CurveSurfaceDistance(curves, s_vessel_full1, CS_THRESHOLD)
-Jcsdist2 = CurveSurfaceDistance(curves, s_vessel_full2, CS_THRESHOLD)
+# Jcsdist  = CurveSurfaceDistance(curves, s_vessel_full, CS_THRESHOLD)
+Jcsdist1 = CurveSurfaceDistance(base_curves, s_vessel1, CS_THRESHOLD)
+Jcsdist2 = CurveSurfaceDistance(base_curves, s_vessel2, CS_THRESHOLD)
 Jcs = [LpCurveCurvature(c, 2, CURVATURE_THRESHOLD) for c in base_curves]
 Jmscs = [MeanSquaredCurvature(c) for c in base_curves]
 
@@ -100,6 +104,7 @@ JF = Jf \
     + MSC_WEIGHT * sum(QuadraticPenalty(J, MSC_THRESHOLD, "max") for J in Jmscs) \
     + CS_WEIGHT * Jcsdist1 + CS_WEIGHT * Jcsdist2 \
     + LENGTH_WEIGHT * QuadraticPenalty(sum(Jls), LENGTH_THRESHOLD, "max")
+    # + CS_WEIGHT * Jcsdist \
 
 def fun(dofs):
     JF.x = dofs
@@ -125,7 +130,7 @@ def fun(dofs):
 
 f = fun
 dofs = JF.x
-res = minimize(fun, dofs, jac=True, method='L-BFGS-B', options={'maxiter': MAXITER, 'maxcor': 300}, tol=1e-15)
+res = minimize(fun, dofs, jac=True, method='BFGS', options={'maxiter': MAXITER, 'maxcor': 300}, tol=1e-12)
 
 bs.set_points(s_full.gamma().reshape((-1, 3)))
 curves_to_vtk(curves, "curves_opt_short_"+QA_or_QH)
@@ -143,7 +148,7 @@ if do_long_opt:
     LENGTH_WEIGHT *= 0.1
     CURVATURE_WEIGHT *= 0.1
     MSC_WEIGHT *= 0.1
-    res = minimize(fun, dofs, jac=True, method='L-BFGS-B', options={'maxiter': MAXITER, 'maxcor': 300}, tol=1e-15)
+    res = minimize(fun, dofs, jac=True, method='BFGS', options={'maxiter': MAXITER, 'maxcor': 300}, tol=1e-15)
 
     bs.set_points(s_full.gamma().reshape((-1, 3)))
     curves_to_vtk(curves, "curves_opt_long_"+QA_or_QH)

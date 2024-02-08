@@ -23,27 +23,27 @@ except ImportError:
     comm = None
     pprint = print
 ######## INPUT PARAMETERS ########
-QA_or_QH = 'QH'
+QA_or_QH = 'QA'
 use_nfp3 = True
 ncoils=3
-CS_THRESHOLD = 1e-1#0.00047
-CS_WEIGHT = 1e13
-max_nfev = 40
-iota_target = 0.41#0.177
-iota_weight = 5e1 if QA_or_QH == 'QA' else 0
+CS_THRESHOLD = 2e-2
+CS_WEIGHT = 1e24
+max_nfev = 100
+iota_target = 0.41 if QA_or_QH == 'QA' else -0.71
+iota_weight = 1e2 if QA_or_QH == 'QA' else 0
 aspect_target = 6.0
 aspect_weight = 2e-2#3e-2
 quasisymmetry_weight = 1e2
-max_modes = [1, 2]#[1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6]
+max_modes = [1, 1, 2, 2, 3, 3]#[1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6]
 rel_step = 1e-5
 abs_step = 1e-7
 ISTTOK_R0 = 1#0.46
 ISTTOK_R1 = 0.25#0.1
 ntheta_VMEC = 32
 nphi_VMEC = 32
-numquadpoints = 101
+numquadpoints = 61
 ftol=1e-4
-diff_method = 'forward'
+diff_method = 'centered'
 ######## END INPUT PARAMETERS ########
 ### Go to results folder
 results_path = os.path.join(os.path.dirname(__file__), 'results_'+QA_or_QH+'_nfp3' if use_nfp3 else '')
@@ -67,7 +67,7 @@ surf.to_vtk("surf_init")
 #exit()
 ### Optimize
 helicity_n = 0 if QA_or_QH == 'QA' else -1
-Jcsdist = CurveSurfaceDistance(base_curves, surf, 0.04)
+Jcsdist = CurveSurfaceDistance(base_curves, surf, CS_THRESHOLD)
 qs = QuasisymmetryRatioResidual(vmec, np.arange(0, 1.01, 0.1),  # Radii to target
                                 helicity_m=1, helicity_n=helicity_n)  # (M, N) you want in |B|
 
@@ -77,15 +77,15 @@ qs = QuasisymmetryRatioResidual(vmec, np.arange(0, 1.01, 0.1),  # Radii to targe
 
 for max_mode in max_modes:
     pprint(f' ### Max mode = {max_mode} ### ')
-    if max_mode in [1,2]:
+    if max_mode==1:
+        vmec.indata.mpol = 3
+        vmec.indata.ntor = 3
+    elif max_mode==2:
         vmec.indata.mpol = 3
         vmec.indata.ntor = 3
     else:
-        vmec.indata.mpol = max_mode + 2
-        vmec.indata.ntor = max_mode + 2
-    surf.fix_all()
-    surf.fixed_range(mmin=0, mmax=max_mode, nmin=-max_mode, nmax=max_mode, fixed=False)
-    surf.fix("rc(0,0)")  # Major radius
+        vmec.indata.mpol = max_mode + 1
+        vmec.indata.ntor = max_mode + 1
     prob = LeastSquaresProblem.from_tuples([
                                             (vmec.aspect, aspect_target, aspect_weight),
                                             (qs.residuals, 0, quasisymmetry_weight),
@@ -93,6 +93,9 @@ for max_mode in max_modes:
                                             (Jcsdist.J, 0, CS_WEIGHT)
                                             # (optMaxDist.J, 0, CS_WEIGHT)
                                             ])
+    surf.fix_all()
+    surf.fixed_range(mmin=0, mmax=max_mode, nmin=-max_mode, nmax=max_mode, fixed=False)
+    surf.fix("rc(0,0)")  # Major radius
     pprint("Iota before optimization:", vmec.mean_iota())
     pprint("Distance to surfaces before optimization:", Jcsdist.shortest_distance())
     pprint("Value of Jcsdist.J before optimization:", Jcsdist.J())
