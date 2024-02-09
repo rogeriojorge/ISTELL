@@ -18,20 +18,20 @@ ncoils = 4 if QA_or_QH == 'QA' else 4
 do_long_opt = False
 extend_distance = 0.12
 use_nfp3 = True
-opt_method = 'Powell' if QA_or_QH == 'QA' else 'Powell'
+opt_method = 'BFGS' if QA_or_QH == 'QA' else 'BFGS'
 
 LENGTH_WEIGHT = Weight(1e-1) if QA_or_QH == 'QA' else Weight(1e-1)
-LENGTH_THRESHOLD = 12 if QA_or_QH == 'QA' else 13
+LENGTH_THRESHOLD = 15 if QA_or_QH == 'QA' else 16
 CS_THRESHOLD = 0.02
-CS_WEIGHT = 1e17
+CS_WEIGHT = 5e16
 CC_THRESHOLD = 0.1 if QA_or_QH == 'QA' else 0.1
 CC_WEIGHT = 1e4
 CURVATURE_THRESHOLD = 15 if QA_or_QH == 'QA' else 20
 CURVATURE_WEIGHT = Weight(1e-6)
 MSC_THRESHOLD = 15 if QA_or_QH == 'QA' else 20
 MSC_WEIGHT = Weight(1e-6)
-MAXITER = 1e2
-MAXFEV = 3e3
+MAXITER = 1e3
+MAXFEV = 1e4
 
 results_path = os.path.join(os.path.dirname(__file__), 'results_'+QA_or_QH+'_nfp3' if use_nfp3 else '')
 Path(results_path).mkdir(parents=True, exist_ok=True)
