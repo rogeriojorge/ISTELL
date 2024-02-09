@@ -12,32 +12,34 @@ from simsopt.objectives import Weight, SquaredFlux, QuadraticPenalty
 QA_or_QH = 'QA'
 
 R0 = 1.0
-R1 = 0.6 if QA_or_QH == 'QA' else 0.42
+R1 = 0.5 if QA_or_QH == 'QA' else 0.5
 order = 8 if QA_or_QH == 'QA' else 10
-ncoils = 4 if QA_or_QH == 'QA' else 5
+ncoils = 4 if QA_or_QH == 'QA' else 4
 do_long_opt = False
-extend_distance = 0.03
+extend_distance = 0.12
 use_nfp3 = True
+opt_method = 'Powell' if QA_or_QH == 'QA' else 'Powell'
 
-LENGTH_WEIGHT = Weight(1e1) if QA_or_QH == 'QA' else Weight(1e1)
-LENGTH_THRESHOLD = 14.5 if QA_or_QH == 'QA' else 17
-CS_THRESHOLD = 0.08
-CS_WEIGHT = 1e12
-CC_THRESHOLD = 0.08 if QA_or_QH == 'QA' else 0.06
+LENGTH_WEIGHT = Weight(1e-1) if QA_or_QH == 'QA' else Weight(1e-1)
+LENGTH_THRESHOLD = 12 if QA_or_QH == 'QA' else 13
+CS_THRESHOLD = 0.02
+CS_WEIGHT = 1e17
+CC_THRESHOLD = 0.1 if QA_or_QH == 'QA' else 0.1
 CC_WEIGHT = 1e4
-CURVATURE_THRESHOLD = 10 if QA_or_QH == 'QA' else 22
-CURVATURE_WEIGHT = Weight(1e-5)
-MSC_THRESHOLD = 10 if QA_or_QH == 'QA' else 22
-MSC_WEIGHT = Weight(1e-5)
-MAXITER = 500
+CURVATURE_THRESHOLD = 15 if QA_or_QH == 'QA' else 20
+CURVATURE_WEIGHT = Weight(1e-6)
+MSC_THRESHOLD = 15 if QA_or_QH == 'QA' else 20
+MSC_WEIGHT = Weight(1e-6)
+MAXITER = 1e2
+MAXFEV = 3e3
 
 results_path = os.path.join(os.path.dirname(__file__), 'results_'+QA_or_QH+'_nfp3' if use_nfp3 else '')
 Path(results_path).mkdir(parents=True, exist_ok=True)
 os.chdir(results_path)
 filename = 'input.ISTTOK_final_' + QA_or_QH
 # Initialize the boundary magnetic surface:
-nphi = 12
-ntheta = 12
+nphi = 26
+ntheta = 26
 
 s = SurfaceRZFourier.from_vmec_input(filename, range="half period", nphi=nphi, ntheta=ntheta)
 s_full = SurfaceRZFourier.from_vmec_input(filename, range="full torus", nphi=nphi*2*s.nfp, ntheta=ntheta)
@@ -99,12 +101,12 @@ Jmscs = [MeanSquaredCurvature(c) for c in base_curves]
 # fact that Optimizable objects with J() and dJ() functions can be
 # multiplied by scalars and added:
 JF = Jf \
+    + CS_WEIGHT * Jcsdist1 \
+    + CS_WEIGHT * Jcsdist2 \
     + CC_WEIGHT * Jccdist \
     + CURVATURE_WEIGHT * sum(Jcs) \
     + MSC_WEIGHT * sum(QuadraticPenalty(J, MSC_THRESHOLD, "max") for J in Jmscs) \
-    + CS_WEIGHT * Jcsdist1 + CS_WEIGHT * Jcsdist2 \
     + LENGTH_WEIGHT * QuadraticPenalty(sum(Jls), LENGTH_THRESHOLD, "max")
-    # + CS_WEIGHT * Jcsdist \
 
 def fun(dofs):
     JF.x = dofs
@@ -130,7 +132,7 @@ def fun(dofs):
 
 f = fun
 dofs = JF.x
-res = minimize(fun, dofs, jac=True, method='BFGS', options={'maxiter': MAXITER, 'maxcor': 300}, tol=1e-12)
+res = minimize(fun, dofs, jac=True, method=opt_method, options={'maxiter': MAXITER, 'maxfev': MAXFEV}, tol=1e-15)
 
 bs.set_points(s_full.gamma().reshape((-1, 3)))
 curves_to_vtk(curves, "curves_opt_short_"+QA_or_QH)
@@ -148,7 +150,7 @@ if do_long_opt:
     LENGTH_WEIGHT *= 0.1
     CURVATURE_WEIGHT *= 0.1
     MSC_WEIGHT *= 0.1
-    res = minimize(fun, dofs, jac=True, method='BFGS', options={'maxiter': MAXITER, 'maxcor': 300}, tol=1e-15)
+    res = minimize(fun, dofs, jac=True, method='BFGS', options={'maxiter': MAXITER, 'maxfev': MAXFEV}, tol=1e-15)
 
     bs.set_points(s_full.gamma().reshape((-1, 3)))
     curves_to_vtk(curves, "curves_opt_long_"+QA_or_QH)
