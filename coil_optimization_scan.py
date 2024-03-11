@@ -42,11 +42,11 @@ ncoils = args.ncoils
 R1_mean = 0.3
 R1_std = 0.3
 extend_distance = 0.04
-MAXITER = 500
+MAXITER = 700
 use_nfp3 = True
 opt_method = 'BFGS'
-min_length_per_coil = 3.3
-max_length_per_coil = 4.5
+min_length_per_coil = 3.2
+max_length_per_coil = 4.3
 min_curvature = 8
 max_curvature = 25
 CC_min = 0.07
@@ -56,7 +56,7 @@ order_max = 15
 nphi = 32
 ntheta = 32
 CS_THRESHOLD = 0.04
-CS_WEIGHT = 1e5
+CS_WEIGHT = 1e4
 
 results_path = os.path.join(os.path.dirname(__file__), 'results_'+QA_or_QH+'_nfp3' if use_nfp3 else '')
 Path(results_path).mkdir(parents=True, exist_ok=True)
@@ -144,13 +144,6 @@ def run_optimization(
 
     # Create the initial coils:
     base_curves = create_equally_spaced_curves(ncoils, nfp, stellsym=True, R0=R0, R1=R1, order=order, numquadpoints=order * 16)
-    # base_currents = [Current(1e5) for i in range(ncoils)]
-    base_currents = [Current(1.0) * (1e5) for i in range(ncoils)]
-    # base_currents[0].fix_all()
-
-    coils = coils_via_symmetries(base_curves, base_currents, nfp, True)
-    curves = [c.curve for c in coils]
-    curves_to_vtk(curves, new_OUT_DIR + "curves_init", close=True)
     
     def process_surface_and_flux(bs, surf, surf_big=None, new_OUT_DIR="", prefix=""):
         bs.set_points(surf.gamma().reshape((-1, 3)))
@@ -170,12 +163,23 @@ def run_optimization(
         return Jf, maxBdotN
     
     if QA_or_QH in ['QH', 'QA']:
+        base_currents = [Current(1.0) * (1e5) for i in range(ncoils)]
+        # base_currents[0].fix_all()
+        coils = coils_via_symmetries(base_curves, base_currents, nfp, True)
+        curves = [c.curve for c in coils]
+        curves_to_vtk(curves, new_OUT_DIR + "curves_init", close=True)
         bs = BiotSavart(coils)
         Jf_total, _ = process_surface_and_flux(bs, surf, surf_big=surf_big, new_OUT_DIR=new_OUT_DIR, prefix='surf_init_')
 
     elif QA_or_QH == 'both':
-        bs1 = BiotSavart(coils)
-        bs2 = BiotSavart(coils)
+        base_currents1 = [Current(1.0) * (1e5) for i in range(ncoils)]
+        base_currents2 = [Current(1.0) * (1e5) for i in range(ncoils)]
+        coils1 = coils_via_symmetries(base_curves, base_currents1, nfp, True)
+        coils2 = coils_via_symmetries(base_curves, base_currents2, nfp, True)
+        curves = [c.curve for c in coils1]
+        curves_to_vtk(curves, new_OUT_DIR + "curves_init", close=True)
+        bs1 = BiotSavart(coils1)
+        bs2 = BiotSavart(coils2)
         Jf1, _ = process_surface_and_flux(bs1, surf1, surf_big=surf_big1, new_OUT_DIR=new_OUT_DIR, prefix="surf1_init_")
         Jf2, _ = process_surface_and_flux(bs2, surf2, surf_big=surf_big2, new_OUT_DIR=new_OUT_DIR, prefix="surf2_init_")
         Jf_total = Jf1 + Jf2
@@ -202,7 +206,7 @@ def run_optimization(
         + msc_weight * sum(QuadraticPenalty(J, msc_threshold, "max") for J in Jmscs)
         + LinkingNumber(curves, 2)
     )
-
+    
     iteration = 0
 
     def fun(dofs):
@@ -288,7 +292,7 @@ def run_optimization(
         "success": res.success,
         "iterations": res.nit,
         "function_evaluations": res.nfev,
-        "coil_currents": [c.get_value() for c in base_currents],
+        "coil_currents": [c.get_value() for c in base_currents] if QA_or_QH in ['QH', 'QA'] else [c.get_value() for c in base_currents1] + [c.get_value() for c in base_currents2],
         "coil_surface_distance1":  float(Jcsdist1.shortest_distance()),
         "coil_surface_distance2":  float(Jcsdist2.shortest_distance()),
     }
