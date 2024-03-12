@@ -39,23 +39,23 @@ elif args.type == 3:
 else:
     raise ValueError('Invalid type')
 ncoils = args.ncoils
-R1_mean = 0.3
-R1_std = 0.3
-extend_distance = 0.04
-MAXITER = 700
+R1_mean = 0.25
+R1_std = 0.2
+extend_distance = 0.02
+MAXITER = 400
 use_nfp3 = True
-opt_method = 'BFGS'
-min_length_per_coil = 3.2
-max_length_per_coil = 4.3
+opt_method = 'L-BFGS-B'
+min_length_per_coil = 2.6
+max_length_per_coil = 3.6
 min_curvature = 8
 max_curvature = 25
-CC_min = 0.07
+CC_min = 0.06
 CC_max = 0.13
 order_min = 5
 order_max = 15
 nphi = 32
 ntheta = 32
-CS_THRESHOLD = 0.04
+CS_THRESHOLD = 0.03
 CS_WEIGHT = 1e4
 
 results_path = os.path.join(os.path.dirname(__file__), 'results_'+QA_or_QH+'_nfp3' if use_nfp3 else '')
@@ -150,13 +150,13 @@ def run_optimization(
         Bbs = bs.B().reshape((nphi, ntheta, 3))
         BdotN = (np.sum(Bbs * surf.unitnormal(), axis=2)) / np.linalg.norm(Bbs, axis=2)
         maxBdotN = np.max(np.abs(BdotN))
-        pointData = {"B.N/B": BdotN[:, :, None]}
+        pointData = {"B.n/B": BdotN[:, :, None]}
         surf.to_vtk(new_OUT_DIR + prefix + "halfnfp", extra_data=pointData)
         if surf_big is not None:
             bs.set_points(surf_big.gamma().reshape((-1, 3)))
             Bbs = bs.B().reshape((nphi_big, ntheta_big, 3))
             BdotN = (np.sum(Bbs * surf_big.unitnormal(), axis=2)) / np.linalg.norm(Bbs, axis=2)
-            pointData = {"B.N/B": BdotN[:, :, None]}
+            pointData = {"B.n/B": BdotN[:, :, None]}
             surf_big.to_vtk(new_OUT_DIR + prefix + "big", extra_data=pointData)
         bs.set_points(surf.gamma().reshape((-1, 3)))
         Jf = SquaredFlux(surf, bs, definition="local")
@@ -333,7 +333,7 @@ for index in range(10000):
 
     # Threshold and weight for the coil-to-coil distance penalty in the objective function:
     cc_threshold = rand(CC_min, CC_max)
-    cc_weight = 10.0 ** rand(-1, 3)
+    cc_weight = 10.0 ** rand(-0, 4)
 
     run_optimization(
         R1,

@@ -13,10 +13,11 @@ from paretoset import paretoset
 import matplotlib.colors as colors
 from simsopt.geo import SurfaceRZFourier
 this_path = os.path.dirname(os.path.abspath(__file__))
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--type", type=int, default=1)
 args = parser.parse_args()
+
+print_coil_currents = False
 
 if args.type == 1:
     QA_or_QH = 'QH'
@@ -75,13 +76,13 @@ elif QA_or_QH == 'QA':
     succeeded = np.logical_and(succeeded, df["length"] < 17)
     succeeded = np.logical_and(succeeded, df["BdotN"] < 0.9e-2)
 else:
-    succeeded = np.logical_and(succeeded, df["coil_coil_distance"] > 0.07)
-    succeeded = np.logical_and(succeeded, df["Jf"] < 5e-2)
-    # succeeded = np.logical_and(succeeded, df["max_max_curvature"] < 10)
+    succeeded = np.logical_and(succeeded, df["coil_coil_distance"] > 0.070)
+    succeeded = np.logical_and(succeeded, df["Jf"] < 7e-4)
+    succeeded = np.logical_and(succeeded, df["max_max_curvature"] < 13)
     # succeeded = np.logical_and(succeeded, df["coil_surface_distance1"] > 0.049)
     # succeeded = np.logical_and(succeeded, df["coil_surface_distance2"] > 0.049)
     # succeeded = np.logical_and(succeeded, df["length"] < 17)
-    # succeeded = np.logical_and(succeeded, df["BdotN"] < 0.9e-2)
+    succeeded = np.logical_and(succeeded, df["BdotN"] < 6.0e-2)
 
 #########################################################
 # End of filtering criteria
@@ -90,7 +91,7 @@ else:
 df_filtered = df[succeeded]
 print(f'Number of succeeded runs of {QA_or_QH}: {len(df_filtered)}')
 
-pareto_mask = paretoset(df_filtered[["BdotN", "max_max_curvature"]], sense=[min, min])
+pareto_mask = paretoset(df_filtered[["BdotN", "max_max_curvature", "length_target"]], sense=[min, min, min])
 df_pareto = df_filtered[pareto_mask]
 
 print(f"Best Pareto-optimal results (total of {len(df_pareto)}):")
@@ -107,8 +108,9 @@ print(
     ]
 )
 print("Directory names only:")
-for dirname in df_pareto["directory"]:
-    print(dirname)
+for dirname, currents in zip(df_pareto["directory"], df_pareto["coil_currents"]):
+    print(f'dirname = {dirname}')
+    if print_coil_currents: print(f'  currents = {currents}')
 
 #########################################################
 # Plotting
@@ -232,13 +234,13 @@ def process_surface_and_flux(bs, surf, surf_big=None, new_OUT_DIR="", prefix="")
     bs.set_points(surf.gamma().reshape((-1, 3)))
     Bbs = bs.B().reshape((nphi, ntheta, 3))
     BdotN = (np.sum(Bbs * surf.unitnormal(), axis=2)) / np.linalg.norm(Bbs, axis=2)
-    pointData = {"B.N/B": BdotN[:, :, None]}
+    pointData = {"B.n/B": BdotN[:, :, None]}
     surf.to_vtk(os.path.join(new_OUT_DIR, prefix + "halfnfp"), extra_data=pointData)
     if surf_big is not None:
         bs.set_points(surf_big.gamma().reshape((-1, 3)))
         Bbs = bs.B().reshape((nphi_big, ntheta_big, 3))
         BdotN = (np.sum(Bbs * surf_big.unitnormal(), axis=2)) / np.linalg.norm(Bbs, axis=2)
-        pointData = {"B.N/B": BdotN[:, :, None]}
+        pointData = {"B.n/B": BdotN[:, :, None]}
         surf_big.to_vtk(os.path.join(new_OUT_DIR, prefix + "big"), extra_data=pointData)
 
 # Copy the best results to a separate directory
@@ -256,6 +258,6 @@ for dirname in df_pareto["directory"]:
     elif QA_or_QH == 'both':
         bs1=load(os.path.join(source_dir,"biot_savart1.json"))
         process_surface_and_flux(bs1, surf1, surf_big=surf_big1, new_OUT_DIR=destination_dir, prefix="surf1_opt_")
-        bs2=load(os.path.join(source_dir,"biot_savart1.json"))
+        bs2=load(os.path.join(source_dir,"biot_savart2.json"))
         process_surface_and_flux(bs2, surf2, surf_big=surf_big2, new_OUT_DIR=destination_dir, prefix="surf2_opt_")
     
