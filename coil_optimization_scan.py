@@ -42,28 +42,28 @@ ncoils = args.ncoils
 R1_mean = 0.25
 R1_std = 0.2
 extend_distance = 0.02
-MAXITER = 400
+MAXITER = 1500
 use_nfp3 = True
 opt_method = 'L-BFGS-B'
 min_length_per_coil = 2.6
-max_length_per_coil = 3.6
+max_length_per_coil = 3.5
 min_curvature = 8
 max_curvature = 25
 CC_min = 0.06
-CC_max = 0.13
+CC_max = 0.10
 order_min = 5
 order_max = 15
 nphi = 32
 ntheta = 32
-CS_THRESHOLD = 0.03
-CS_WEIGHT = 1e4
+CS_THRESHOLD = 0.04
+CS_WEIGHT = 3e4
 
 results_path = os.path.join(os.path.dirname(__file__), 'results_'+QA_or_QH+'_nfp3' if use_nfp3 else '')
 Path(results_path).mkdir(parents=True, exist_ok=True)
 os.chdir(results_path)
 if QA_or_QH == 'both':
-    filename1 = os.path.join('..','results_QH_nfp3','input.ISTTOK_final_QH')
-    filename2 = os.path.join('..','results_QA_nfp3','input.ISTTOK_final_QA')
+    filename1 = os.path.join('..','results_single_stage','input.ISTTOK_final_QH')
+    filename2 = os.path.join('..','results_single_stage','input.ISTTOK_final_QA')
     surf1 = SurfaceRZFourier.from_vmec_input(filename1, range="half period", nphi=nphi, ntheta=ntheta)
     surf2 = SurfaceRZFourier.from_vmec_input(filename2, range="half period", nphi=nphi, ntheta=ntheta)
     nfp = surf1.nfp

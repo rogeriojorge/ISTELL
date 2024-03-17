@@ -20,19 +20,26 @@ interp_factors = sorted(np.concatenate([np.linspace(0,0.03,N_extra,endpoint=True
 # plt.plot(interp_factors)
 # plt.show()
 # exit()
-ncoils = 4
+ncoils = 5
 output_path = 'surfs_between_nfp3'
 this_path = '/Users/rogeriojorge/local/ISTELL'
+# results_path = os.path.join(this_path, 'results_single_stage')
 results_path = os.path.join(this_path, 'results_both_nfp3')
 os.chdir(results_path)
-coils_path = os.path.join(results_path, f'optimal_coils/ncoils_{ncoils}_order_7_R1_0.41_length_target_3.5_weight_0.0014_max_curvature_9.4_weight_0.00077_msc_2.5e+01_weight_0.00018_cc_0.1_weight_1.2e+01')
-filename1 = os.path.join('..', 'results_QH_nfp3', 'input.ISTTOK_final_QH')
-filename2 = os.path.join('..', 'results_QA_nfp3', 'input.ISTTOK_final_QA')
+
+# coils_path = os.path.join(results_path, f'optimal_coils/ncoils_5_order_8_R1_0.36_length_target_3.3_weight_0.0084_max_curvature_1.6e+01_weight_1.7e-06_msc_1.3e+01_weight_0.00013_cc_0.13_weight_1.5e+03')
+
+coils_path = os.path.join(this_path, 'results_single_stage', f'optimal_coils/ncoils_5_order_6_R1_0.49_length_target_3.6_weight_0.0072_max_curvature_2.4e+01_weight_0.0099_msc_9.0_weight_4.6e-06_cc_0.1_weight_3.4e+02')
+
+# filename1 = os.path.join('..', 'results_QH_nfp3', 'input.ISTTOK_final_QH')
+# filename2 = os.path.join('..', 'results_QA_nfp3', 'input.ISTTOK_final_QA')
+filename1 = os.path.join(this_path, 'results_single_stage', 'input.ISTTOK_final_QH')
+filename2 = os.path.join(this_path, 'results_single_stage', 'input.ISTTOK_final_QA')
 
 # Load surfaces
-surf1 = SurfaceRZFourier.from_vmec_input(filename1, range="half period", nphi=nphi, ntheta=ntheta)
-surf2 = SurfaceRZFourier.from_vmec_input(filename2, range="half period", nphi=nphi, ntheta=ntheta)
-surf_between = SurfaceRZFourier.from_vmec_input(filename1, range="half period", nphi=nphi, ntheta=ntheta)
+surf1 = SurfaceRZFourier.from_vmec_input(filename1, range="full torus", nphi=nphi, ntheta=ntheta)
+surf2 = SurfaceRZFourier.from_vmec_input(filename2, range="full torus", nphi=nphi, ntheta=ntheta)
+surf_between = SurfaceRZFourier.from_vmec_input(filename1, range="full torus", nphi=nphi, ntheta=ntheta)
 surf1_dofs = surf1.x
 surf2_dofs = surf2.x
 
@@ -58,6 +65,7 @@ Path(output_path).mkdir(parents=True, exist_ok=True)
 image_files = []
 
 # Convert VTK files to PNG images and store file names
+clim=0
 for i in range(2 * len(interp_factors) - 1):
     j = 2 * len(interp_factors) - i - 2 if i > len(interp_factors) - 1 else i
     factor = interp_factors[j]
@@ -70,6 +78,8 @@ for i in range(2 * len(interp_factors) - 1):
 
     # Calculate surface normals
     BdotN1 = (np.sum(bs1.B().reshape((nphi, ntheta, 3)) * surf_between.unitnormal(), axis=2)) / np.linalg.norm(bs1.B().reshape((nphi, ntheta, 3)), axis=2)
+    print(f'max BdotN: {np.max(np.abs(BdotN1))}')
+    if clim==0: clim=np.max(np.abs(BdotN1))
     surf_between.to_vtk(os.path.join(output_path, f"surf_between_halfnfp_{i}"), extra_data={"B.n/B": BdotN1[:, :, None]})
 
     # Plot surfaces and coils
@@ -81,7 +91,7 @@ for i in range(2 * len(interp_factors) - 1):
 
     args_cbar = dict(height=0.1, vertical=False, position_x=0.29, position_y=0.03, color="k", title_font_size=24, label_font_size=16)
 
-    surf_mesh = plotter.add_mesh(surf_between_vtk, scalars="B.n/B", cmap="coolwarm", clim=[-0.03, 0.03], scalar_bar_args=args_cbar)
+    surf_mesh = plotter.add_mesh(surf_between_vtk, scalars="B.n/B", cmap="coolwarm", clim=[-clim, clim], scalar_bar_args=args_cbar)
     # Normalize current values
     current_values = np.array([coil.current.get_value() for coil in bs1.coils])
     for coil_index, coil in enumerate(bs1.coils):
@@ -99,7 +109,7 @@ for i in range(2 * len(interp_factors) - 1):
     plotter.set_background("white")
     
     # Adjust camera position (rotate and zoom)
-    plotter.camera_position = (-5.1,-0.9,0)#[(7, -2, 0), (0, 0, 0), (0, 0, 1)]  # Example camera position (adjust as needed)
+    plotter.camera_position = (-5.1,-0.9,2)#[(7, -2, 0), (0, 0, 0), (0, 0, 1)]  # Example camera position (adjust as needed)
     # plotter.camera_clipping_range = [5, 20]  # Adjust the clipping range to zoom in
     plotter.camera.zoom(1.6)
 

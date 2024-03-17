@@ -76,13 +76,14 @@ elif QA_or_QH == 'QA':
     succeeded = np.logical_and(succeeded, df["length"] < 17)
     succeeded = np.logical_and(succeeded, df["BdotN"] < 0.9e-2)
 else:
-    succeeded = np.logical_and(succeeded, df["coil_coil_distance"] > 0.070)
-    succeeded = np.logical_and(succeeded, df["Jf"] < 7e-4)
+    pass
+    succeeded = np.logical_and(succeeded, df["coil_coil_distance"] > 0.06)
+    succeeded = np.logical_and(succeeded, df["Jf"] < 3e-4)
     succeeded = np.logical_and(succeeded, df["max_max_curvature"] < 13)
     # succeeded = np.logical_and(succeeded, df["coil_surface_distance1"] > 0.049)
     # succeeded = np.logical_and(succeeded, df["coil_surface_distance2"] > 0.049)
     # succeeded = np.logical_and(succeeded, df["length"] < 17)
-    succeeded = np.logical_and(succeeded, df["BdotN"] < 6.0e-2)
+    succeeded = np.logical_and(succeeded, df["BdotN"] < 5.0e-2)
 
 #########################################################
 # End of filtering criteria
@@ -216,8 +217,8 @@ ntheta_big = ntheta + 1
 quadpoints_theta = np.linspace(0, 1, ntheta_big)
 quadpoints_phi = np.linspace(0, 1, nphi_big)
 if QA_or_QH == 'both':
-    filename1 = os.path.join('..','results_QH_nfp3','input.ISTTOK_final_QH')
-    filename2 = os.path.join('..','results_QA_nfp3','input.ISTTOK_final_QA')
+    filename1 = os.path.join('..','results_single_stage','input.ISTTOK_final_QH')
+    filename2 = os.path.join('..','results_single_stage','input.ISTTOK_final_QA')
     surf1 = SurfaceRZFourier.from_vmec_input(filename1, range="half period", nphi=nphi, ntheta=ntheta)
     surf2 = SurfaceRZFourier.from_vmec_input(filename2, range="half period", nphi=nphi, ntheta=ntheta)
     surf_big1 = SurfaceRZFourier(dofs=surf1.dofs,nfp=nfp, mpol=surf1.mpol,ntor=surf1.ntor,

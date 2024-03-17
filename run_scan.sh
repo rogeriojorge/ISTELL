@@ -4,7 +4,7 @@
 type=3
 output_folder="scan_output_$type"
 RUN_PY_PATH="/Users/rogeriojorge/local/ISTELL/coil_optimization_scan.py"
-run_configurations=("3:0" "4:3" "5:5" "6:5" "7:0")
+run_configurations=("3:0" "4:1" "5:6" "6:6" "7:0")
 create_output_txt_files=false #true
 
 # Counter for the total number of Python runs
